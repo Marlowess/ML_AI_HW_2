@@ -101,6 +101,8 @@ def plotSplineFunction(array, kernel_type):
 def gridsearch_no_cv(X_train, y_train, X_validation, y_validation):
     best_score = 0
     best_clf = None
+    best_gamma = 0
+    best_C = 0
     gamma_vals = [1e-5, 1e-4, 1e-3, 2e-3, 1e-2, 2e-1, 1e-1]
     c_vals = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
     scores = np.empty([len(gamma_vals) * len(c_vals), 3])
@@ -115,10 +117,57 @@ def gridsearch_no_cv(X_train, y_train, X_validation, y_validation):
             if(score > best_score):
                 best_score = score
                 best_clf = clf
+                best_gamma = gamma
+                best_C = C
     headers = ["Gamma", "C", "Accuracy on Validation"]
     table = tabulate(scores, headers, tablefmt="fancy_grid", numalign="right")
-    print(table)
+    print("Best Gamma: {}".format(best_gamma))
+    print("Best C: {}".format(best_C))
+    print("Best score: {}".format(best_score))
     return best_clf
+
+
+def gridsearch_cv(X_train, y_train):
+    best_score = 0
+    best_clf = None
+    best_gamma = 0
+    best_C = 0
+    gamma_vals = [1e-5, 1e-4, 1e-3, 2e-3, 1e-2, 2e-1, 1e-1]
+    c_vals = [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+    scores = np.empty([len(gamma_vals) * len(c_vals) * 5, 4])
+    index = 0
+    X_folds = np.array_split(X_train, 5)
+    y_folds = np.array_split(y_train, 5)
+
+    for i, gamma in enumerate(gamma_vals):
+        for j, C in enumerate(c_vals):
+            score = 0
+            for k in range(5):
+                X_train_cv = list(X_folds)
+                X_validation_cv = X_train_cv.pop(k)
+                X_train_cv = np.concatenate(X_train_cv)
+                y_train_cv = list(y_folds)
+                y_validation_cv = y_train_cv.pop(k)
+                y_train_cv = np.concatenate(y_train_cv)
+                model = SVC(C=C, kernel='rbf', gamma=gamma)
+                clf = model.fit(X_train_cv, y_train_cv)
+                score = clf.score(X_validation_cv, y_validation_cv)
+                scores[index, 0:4] = gamma_vals[i], c_vals[j], int(k), score
+                index += 1
+                if(score > best_score):
+                    best_score = score
+                    best_clf = clf
+                    best_gamma = gamma
+                    best_C = C
+    headers = ["Gamma", "C", "Fold No", "Accuracy on Validation Fold"]
+    table = tabulate(scores, headers, tablefmt="fancy_grid", numalign="right")
+    print("Best Gamma: {}".format(best_gamma))
+    print("Best C: {}".format(best_C))
+    print("Best score: {}".format(best_score))
+    return best_clf
+
+
+
 #def svc_evaluation(clf, X_test, y_test):
 
 scaler = StandardScaler()
@@ -141,8 +190,10 @@ clf = gridsearch_no_cv(X_train, y_train, X_validation, y_validation)
 print(clf.score(X_test, y_test))
 plot_boundaries(X_test, y_test, clf)
 
-# Gridsearch with CV
+# Gridsearch with CV step
 X_train = np.concatenate((X_train, X_validation), axis=0)
 y_train = np.concatenate((y_train, y_validation), axis=0)
 
-# At this points the dataset proportions are: Training 70% (105 elements) and Testing 30% (45 elements)
+# At this point the dataset proportions are: Training 70% (105 elements) and Testing 30% (45 elements)
+clf = gridsearch_cv(X_train, y_train)
+print(clf.score(X_test, y_test))
