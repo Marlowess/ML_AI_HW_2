@@ -145,4 +145,4 @@ plot_boundaries(X_test, y_test, clf)
 X_train = np.concatenate((X_train, X_validation), axis=0)
 y_train = np.concatenate((y_train, y_validation), axis=0)
 
-print(X_train.shape)
+# At this points the dataset proportions are: Training 70% (105 elements) and Testing 30% (45 elements)
